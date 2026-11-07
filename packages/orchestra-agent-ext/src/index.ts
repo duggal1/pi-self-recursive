@@ -2,6 +2,8 @@
 // Loaded with `pi --extension <dist/index.js>` at spawn time (never as a core edit).
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import type { DesktopAction, DesktopConfig, DesktopVerb } from "./desktop.ts";
+import { bashInvokesAgentDesktop, checkDesktopAccess, executeDesktopVerb, getDesktopConfig } from "./desktop.ts";
 import { registerFauxProvider } from "./faux-provider.ts";
 
 function env(key: string): string | undefined {
@@ -44,6 +46,9 @@ export default function (pi: ExtensionAPI): void {
 	});
 
 	// Edit guard: block edits to files leased by another agent. Reads always allowed.
+	// Desktop guard (Part C): block `desktop` tool calls and `bash` invocations of
+	// `agent-desktop` when the desktop capability is not declared. The tool itself
+	// returns an error when the apps allowlist fails; this guard is fail-closed.
 	pi.on("tool_call", async (event) => {
 		if (
 			event.toolName === "read" ||
@@ -52,6 +57,23 @@ export default function (pi: ExtensionAPI): void {
 			event.toolName === "ls"
 		)
 			return undefined;
+		if (event.toolName === "desktop" || event.toolName === "bash") {
+			const config: DesktopConfig = getDesktopConfig();
+			if (event.toolName === "desktop") {
+				const gate = checkDesktopAccess(undefined, config);
+				if (gate) return { block: true, reason: `Blocked: ${gate}.` };
+				return undefined;
+			}
+			const input = event.input as Record<string, unknown>;
+			const command = typeof input.command === "string" ? input.command : "";
+			if (bashInvokesAgentDesktop(command) && !config.enabled) {
+				return {
+					block: true,
+					reason: `Blocked: bash invokes agent-desktop without desktop capability (set ORCHESTRA_DESKTOP_CAPABILITIES to include desktop).`,
+				};
+			}
+			// Enabled or no desktop invocation: fall through to the file-lease guard.
+		}
 		if (event.toolName !== "edit" && event.toolName !== "write" && event.toolName !== "bash") return undefined;
 		const input = event.input as Record<string, unknown>;
 		const filePath = (input.path ?? input.file_path ?? input.filePath ?? "") as string;
@@ -158,8 +180,72 @@ export default function (pi: ExtensionAPI): void {
 		},
 	};
 
+	const desktopTool: ToolDefinition = {
+		name: "desktop",
+		label: "Desktop",
+		description:
+			"Operate desktop apps via pinned agent-desktop (minimal verbs: snapshot/act/verify/screenshot). " +
+			"Capability-gated OFF by default: needs ORCHESTRA_DESKTOP_CAPABILITIES to include desktop and ORCHESTRA_DESKTOP_ALLOWED_APPS (comma-separated). " +
+			"Results are metadata + sha256 artifact hashes only; trees/screenshots stay in 0600 run-scoped files. " +
+			"Refs come from snapshot; act once, then re-snapshot (verify) to check. Ref actions never auto-retry. " +
+			"Requires macOS Accessibility (and Screen Recording for screenshots) — see orchestra doctor.",
+		parameters: Type.Object({
+			verb: Type.Union([
+				Type.Literal("snapshot"),
+				Type.Literal("act"),
+				Type.Literal("verify"),
+				Type.Literal("screenshot"),
+			]),
+			app: Type.Optional(Type.String()),
+			ref: Type.Optional(Type.String()),
+			action: Type.Optional(
+				Type.Union([
+					Type.Literal("click"),
+					Type.Literal("double-click"),
+					Type.Literal("right-click"),
+					Type.Literal("type"),
+					Type.Literal("set-value"),
+					Type.Literal("clear"),
+					Type.Literal("focus"),
+					Type.Literal("press"),
+					Type.Literal("scroll"),
+					Type.Literal("scroll-to"),
+					Type.Literal("expand"),
+					Type.Literal("collapse"),
+					Type.Literal("check"),
+					Type.Literal("uncheck"),
+					Type.Literal("toggle"),
+					Type.Literal("select"),
+				]),
+			),
+			text: Type.Optional(Type.String()),
+			value: Type.Optional(Type.String()),
+			windowId: Type.Optional(Type.String()),
+			timeoutMs: Type.Optional(Type.Number()),
+		}) as never,
+		async execute(_id, params) {
+			const p = params as {
+				verb: DesktopVerb;
+				app?: string;
+				ref?: string;
+				action?: DesktopAction;
+				text?: string;
+				value?: string;
+				windowId?: string;
+				timeoutMs?: number;
+			};
+			const result = await executeDesktopVerb(p, { agentId, taskId: null });
+			return {
+				content: [{ type: "text", text: result.text }],
+				details: result.details,
+				isError: result.isError,
+			};
+		},
+	};
+
 	pi.registerTool(sendTool);
 	pi.registerTool(inboxTool);
 	pi.registerTool(replyTool);
 	pi.registerTool(spawnTool);
+	pi.registerTool(desktopTool);
 }

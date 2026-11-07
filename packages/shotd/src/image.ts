@@ -19,18 +19,37 @@ export async function encodeArchive(
 	png: Buffer,
 	opts: EncodeOptions = {},
 ): Promise<{ buf: Buffer; format: string; width: number; height: number }> {
+	// Hot path: native WebP from Chromium (format:"webp" 2556B < PNG 5234B on Chrome 156).
+	// sharp encode kept only for lossless option or when the browser returns PNG.
 	const quality = opts.quality ?? 85;
 	const lossless = opts.lossless ?? false;
 	const width = ARCHIVE_WIDTH;
 	const height = ARCHIVE_HEIGHT;
+	if (!lossless) return { buf: png, format: "webp-native-passthrough", width, height };
 	try {
-		const buf = lossless
-			? Buffer.from(await sharp(png).webp({ lossless: true }).toBuffer())
-			: Buffer.from(await sharp(png).webp({ quality }).toBuffer());
+		const buf = Buffer.from(await sharp(png).webp({ lossless: true }).toBuffer());
 		return { buf, format: "webp", width, height };
 	} catch {
-		// Fallback: keep PNG (valid, dimensions preserved). Caller records format.
 		return { buf: png, format: "png", width, height };
+	}
+}
+
+export async function encodeFromBrowser(
+	webp: Buffer,
+	opts: EncodeOptions = {},
+): Promise<{ buf: Buffer; format: string; width: number; height: number }> {
+	// Browser already encoded WebP (Chrome 156+): use directly, no sharp transcode.
+	if (isValidWebP(webp)) return { buf: webp, format: "webp", width: ARCHIVE_WIDTH, height: ARCHIVE_HEIGHT };
+	const png = webp; // fallback if browser sent PNG
+	try {
+		const buf = Buffer.from(
+			await sharp(png)
+				.webp({ quality: opts.quality ?? 85 })
+				.toBuffer(),
+		);
+		return { buf, format: "webp", width: ARCHIVE_WIDTH, height: ARCHIVE_HEIGHT };
+	} catch {
+		return { buf: png, format: "png", width: ARCHIVE_WIDTH, height: ARCHIVE_HEIGHT };
 	}
 }
 

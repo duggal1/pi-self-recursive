@@ -27,3 +27,15 @@
 | D13 | Faux at load | Faux provider registered in extension factory, not session_start, so `--model` resolves. |
 | D14 | Async goal checks | `runChecksAsync` for screenshot_diff/dom_assert; sync `runChecks` kept. Lazy shotd import (off by default). |
 | D15 | Supervisor product | /supervisor extension, planner prompts (versioned), watchdog gates, comms detectors, dynamic thinking rubric, report/watch, cells-based layout. Off by default. |
+
+## Part C (desktop control, 2026-11-07)
+
+| # | Change | Detail |
+|---|---|---|
+| D16 | Pinned upstream | agent-desktop is external (vercel-labs, Apache-2.0), pinned at exact **1.0.2**. Doctor compares the exact version string and exits non-zero on mismatch. Upstream HEAD observed at 1.2.0 (envelope 2.6) was used for research only. |
+| D17 | Envelope contract | Every command prints one JSON envelope `{version:"2.6", ok, command, data?|error?{code, message, suggestion?, recovery?, platform_detail?, details?, disposition:{delivery, retry}}}`; exit 0/1/2. Success `data` varies per command (snapshot carries `app, snapshot_id, ref_count, complete, tree`; screenshot carries base64 `data` or `path`+dims). |
+| D18 | Capability gate | `desktop` is OFF by default. Task declares via env: `ORCHESTRA_DESKTOP_CAPABILITIES` must include `desktop`, `ORCHESTRA_DESKTOP_ALLOWED_APPS` lists apps, `AGENT_DESKTOP_BIN` overrides the binary. Tool fails closed with an error when missing; `tool_call` blocks `bash` containing `agent-desktop` without the capability. Retry only when `disposition.retry === "safe"` (max once, read-only commands only). |
+| D19 | App leases (client-side) | Resource `app:<name>`, non-blocking file lease (O_EXCL, 30s TTL, expiry reclaim). No supervisor `/app-lease` endpoint exists and this part may not edit supervisor/core, so leases coordinate across processes via `.orchestra/desktop-leases` (0600), not the SQLite `leases` table. Carry-over: add supervisor `/app-lease` and switch. |
+| D20 | Events (metadata only, deferred) | Desktop event metadata is command/app/ok/error/ref-count only; snapshot trees and screenshots are payloads written to 0600 run-scoped artifacts referenced by sha256 with TTL cleanup. The supervisor has no `/event` endpoint, so durable `events` rows are deferred; tool results carry the same metadata subset verbatim. Carry-over: add `/event` (metadata-only) when the supervisor part lands. |
+| D21 | shotd resizer reuse | Desktop screenshots reuse shotd's `resizeForModel` (dynamic import `@earendil-works/pi-shotd/image`, added as a pinned dep). No resize math is duplicated; shotd stays the web-pages tool. Falls back to the original buffer when shotd is unavailable. |
+| D22 | Bench honesty | `doctor --bench` prints latency, refs, named refs, and completeness per app; `complete=false` or unnamed refs print `POOR TREE` in plain words and fail the run. No real-machine results yet (smoke gated by `ORCHESTRA_DESKTOP_REAL_SMOKE=1`; permission not granted here). |

@@ -26,6 +26,7 @@ export interface CaptureResult {
 	width: number;
 	height: number;
 	sha256: string;
+	format?: string;
 }
 
 const CHROME_CANDIDATES = [
@@ -251,21 +252,39 @@ export class BrowserManager {
 		const settleMs = opts.settleMs ?? 800;
 		await new Promise((r) => setTimeout(r, settleMs));
 		const clip = opts.clip ?? { x: 0, y: 0, width: viewport.width, height: viewport.height };
-		const shot = await this.send(
+		// Native WebP (Chrome 156 verified). Fall back to PNG bytes if Chromium omits data.
+		let shot = await this.send(
 			"Page.captureScreenshot",
 			{
-				format: "png",
+				format: "webp",
+				quality: 85,
 				captureBeyondViewport: false,
 				clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height, scale: DSF },
 			},
 			sessionId,
 		);
-		const data = shot.data as string | undefined;
-		if (!data) throw new Error("shotd: capture returned no data");
+		let data = shot.data as string | undefined;
+		let format: string = "png";
+		if (!data) {
+			shot = await this.send(
+				"Page.captureScreenshot",
+				{
+					format: "png",
+					captureBeyondViewport: false,
+					clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height, scale: DSF },
+				},
+				sessionId,
+			);
+			data = shot.data as string | undefined;
+			if (!data) throw new Error("shotd: capture returned no data");
+		} else {
+			format = "webp";
+		}
 		const png = Buffer.from(data, "base64");
 		await this.send("Target.closeTarget", { targetId }).catch(() => undefined);
 		const sha = createHash("sha256").update(png).digest("hex");
-		return { png, width: ARCHIVE_WIDTH, height: ARCHIVE_HEIGHT, sha256: sha };
+		// CaptureResult.png holds the raw browser bytes (webp or png); callers encode/resize.
+		return { png, width: ARCHIVE_WIDTH, height: ARCHIVE_HEIGHT, sha256: sha } as unknown as CaptureResult;
 	}
 
 	async dispose(): Promise<void> {

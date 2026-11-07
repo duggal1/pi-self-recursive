@@ -137,7 +137,7 @@ async function handleTool(name: string, args: Record<string, unknown>): Promise<
 		if (!shotId || !region) throw new Error("shotd zoom requires shotId and region");
 		const maxLongEdge = typeof args.maxLongEdge === "number" ? args.maxLongEdge : 1568;
 		// Locate stored shot by id (scan shots dir).
-		const { readdirSync, existsSync: exists } = await import("node:fs");
+		const { readdirSync } = await import("node:fs");
 		const { join: pjoin } = await import("node:path");
 		const dir = pjoin(store.root, "shots");
 		const candidates = readdirSync(dir).filter((f) => f.startsWith(shotId.slice(0, 8)));

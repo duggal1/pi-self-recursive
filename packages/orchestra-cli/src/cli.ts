@@ -3,7 +3,7 @@
 import { join } from "node:path";
 import { Store } from "@earendil-works/pi-orchestra-core";
 import { createSupervisor } from "@earendil-works/pi-orchestra-supervisor";
-import { renderReport, renderStatus } from "./index.ts";
+import { renderReport, renderStatus, runDoctor } from "./index.ts";
 
 async function up(dbPath: string): Promise<void> {
 	const supervisor = createSupervisor({ config: { dbPath, port: 7788 } });
@@ -75,8 +75,17 @@ async function main(argv: string[]): Promise<void> {
 		}
 		return;
 	}
-	console.log("usage: orchestra up|status|report|watch <agent>");
+	if (cmd === "doctor") {
+		const report = await runDoctor({ args: argv.slice(3) });
+		console.log(report.lines.join("\n"));
+		process.exitCode = report.exitCode;
+		return;
+	}
+	console.log("usage: orchestra up|status|report|watch <agent>|doctor [--bench] [--app <name>]");
 	console.log(`  ORCHESTRA_DB=${dbPath}`);
+	console.log(
+		"  doctor: diagnose agent-desktop (binary, pinned version, status, permissions, --bench). Prints guidance only; never grants permissions or opens System Settings.",
+	);
 }
 
 void main(process.argv);

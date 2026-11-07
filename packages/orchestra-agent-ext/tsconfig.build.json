@@ -1,6 +1,13 @@
 {
 	"extends": "../../tsconfig.base.json",
-	"compilerOptions": { "outDir": "./dist", "rootDir": "./src" },
+	"compilerOptions": {
+		"outDir": "./dist",
+		"paths": {
+			"@earendil-works/pi-shotd/image": ["../shotd/dist/image.d.ts"],
+			"@earendil-works/pi-shotd": ["../shotd/dist/index.d.ts"]
+		},
+		"rootDir": "./src"
+	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "dist", "**/*.d.ts", "src/**/*.d.ts"]
 }
