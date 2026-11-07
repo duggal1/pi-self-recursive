@@ -7,7 +7,7 @@ import { detectComms } from "../src/comms.ts";
 import { buildITerm2Script, perTabCount } from "../src/layout.ts";
 import { composeAgentPrompt, planRun } from "../src/planner.ts";
 import { createSupervisor } from "../src/supervisor.ts";
-import { assignThinking } from "../src/thinking.ts";
+import { assignThinking, DEFAULT_THINKING_POLICY, policyForPhase, type ThinkingPolicy } from "../src/thinking.ts";
 import { completionGate, evidenceAudit, targetedReprompt } from "../src/watchdog.ts";
 
 function freshStore(): { store: Store; dir: string } {
@@ -76,6 +76,7 @@ describe("watchdog evidence audit", () => {
 			lastEditAt: Date.now(),
 			hasTestAfterEdit: false,
 			hasTypecheckAfterEdit: true,
+			hasProof: false,
 			isUI: false,
 			diffText: "ok",
 		});
@@ -101,6 +102,7 @@ describe("watchdog evidence audit", () => {
 					lastEditAt: 0,
 					hasTestAfterEdit: false,
 					hasTypecheckAfterEdit: true,
+					hasProof: false,
 					isUI: false,
 					diffText: "",
 				},
@@ -122,8 +124,21 @@ describe("thinking", () => {
 			checks: [{ kind: "cmd" }, { kind: "cmd" }],
 		});
 		expect(trivial.level).toBe("low");
-		expect(hard.level).toBe("xhigh");
+		expect(hard.level).toBe("max");
 		expect(trivial.level).not.toBe(hard.level);
+	});
+
+	it("F4 policy: phases map to the policy table, trivial never gets ultra", () => {
+		expect(policyForPhase("planning")).toBe("max");
+		expect(policyForPhase("architecture")).toBe("max");
+		expect(policyForPhase("ambiguous-debug")).toBe("max");
+		expect(policyForPhase("implementation")).toBe("high");
+		expect(policyForPhase("verifying")).toBe("medium");
+		expect(policyForPhase("trivial")).toBe("low");
+		const misconfigured: ThinkingPolicy = { ...DEFAULT_THINKING_POLICY, trivial: "ultra" };
+		expect(policyForPhase("trivial", misconfigured)).toBe("max");
+		const assigned = assignThinking({ spec: "x", ownsGlobs: [], checks: [], phase: "planning" });
+		expect(assigned.level).toBe("max");
 	});
 });
 

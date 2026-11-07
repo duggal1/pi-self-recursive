@@ -12,7 +12,7 @@ export function getEffortThinkingLevelMap(options: readonly ModelsDevReasoningOp
 	const effortValues = options.flatMap((option) => (option.type === "effort" ? option.values : []));
 	if (effortValues.length === 0) return undefined;
 
-	const supported = new Set(effortValues);
+	const supported: ReadonlySet<string | null> = new Set(effortValues);
 	if (!THINKING_LEVELS.some((level) => supported.has(level)) && !supported.has("none")) return undefined;
 
 	const map: ThinkingLevelMap = { off: supported.has("none") ? "none" : null };

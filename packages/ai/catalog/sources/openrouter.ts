@@ -20,7 +20,10 @@ export function getOpenRouterThinkingLevelMap(
 
 	// OpenRouter's supported_efforts uses the same effort values as models.dev reasoning_options,
 	// so both sources can share the same Pi thinking-level conversion.
-	const map = getEffortThinkingLevelMap([{ type: "effort", values: reasoning.supported_efforts }]);
+	const efforts = reasoning.supported_efforts.filter(
+		(v): v is "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" => v !== "ultra",
+	);
+	const map = getEffortThinkingLevelMap([{ type: "effort", values: efforts }]);
 	if (!map) return reasoning.mandatory === true ? { off: null } : undefined;
 	return { ...map, off: reasoning.mandatory === true ? null : "none" };
 }

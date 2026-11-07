@@ -13,10 +13,10 @@ export function renderStatus(store: Store, opts: { runId?: string; elapsedMs?: n
 		`ORCHESTRA ${opts.runId ?? "dev"}  elapsed ${elapsed}  agents ${agents.length}  escalations ${escalations.length}`,
 	);
 	lines.push("AGENTS");
-	lines.push("  name     role      task  state");
+	lines.push("  name     role      task  state thinking");
 	for (const a of agents)
 		lines.push(
-			`  ${a.name.slice(0, 8).padEnd(8)} ${a.role.slice(0, 9).padEnd(9)} ${(a.taskId?.slice(0, 6) ?? "—").padEnd(6)} ${a.state}`,
+			`  ${a.name.slice(0, 8).padEnd(8)} ${a.role.slice(0, 9).padEnd(9)} ${(a.taskId?.slice(0, 6) ?? "—").padEnd(6)} ${a.state} ${a.thinkingLevel}`,
 		);
 	lines.push("TASKS");
 	for (const t of tasks.slice(0, 20))
@@ -44,8 +44,12 @@ export function renderReport(store: Store): string {
 			`  run ${String(r.run_id)} goal=${String(r.goal).slice(0, 80)} finished=${r.finished_at == null ? "no" : "yes"} reprompts=${String(r.reprompt_rounds ?? 0)}`,
 		);
 		lines.push(`    gap types: ${String(r.gap_types ?? "[]")}`);
+		const levels = store
+			.listAgents()
+			.map((a) => `${a.name}=${a.thinkingLevel}`)
+			.join(" ");
 		lines.push(
-			`    spend: ${String(r.spend_per_agent ?? "{}")} thinking: ${String(r.thinking_per_agent ?? "{}")} timeToDone: ${r.time_to_done_ms ?? "—"}`,
+			`    spend: ${String(r.spend_per_agent ?? "{}")} thinking: ${levels || String(r.thinking_per_agent ?? "{}")} timeToDone: ${r.time_to_done_ms ?? "—"}`,
 		);
 		void reprompts;
 	}

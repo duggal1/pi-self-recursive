@@ -105,3 +105,37 @@ describe("tasks + checks", () => {
 		}
 	});
 });
+
+describe("decision log (F3)", () => {
+	it("records, reads back, and formats per task; persists across store reopen", () => {
+		const { store, dir } = freshStore();
+		const path = join(dir, "or.db");
+		try {
+			const t = store.createTask({ title: "t", spec: "s", ownsGlobs: [] });
+			store.addDecisionLogEntry({
+				taskId: t.id,
+				decision: "use budget tokens",
+				rationale: "adapter takes no effort param",
+				evidence: "f2 probe",
+				by: "agent",
+			});
+			store.addDecisionLogEntry({ taskId: t.id, decision: "reopen: switch to effort", rationale: "new cmd output", by: "agent", reopened: true });
+			expect(store.listDecisionLog(t.id).map((e) => e.decision)).toEqual(["use budget tokens", "reopen: switch to effort"]);
+			expect(store.formatDecisionLog(t.id)).toContain("use budget tokens");
+			expect(store.formatDecisionLog(t.id)).toContain("[REOPENED]");
+			expect(store.formatDecisionLog("no-such-task")).toBe("");
+			store.close();
+			// Reopen: v3 migration applied once, log survives.
+			const reopened = new Store({ path });
+			expect(reopened.listDecisionLog(t.id)).toHaveLength(2);
+			reopened.close();
+		} finally {
+			try {
+				store.close();
+			} catch {
+				/* already closed */
+			}
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});

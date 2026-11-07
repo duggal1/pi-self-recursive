@@ -29,6 +29,32 @@ export interface PlanOutput {
 	promptIds: string[];
 }
 
+export const DECISIVE_PROTOCOL = [
+	"Decisive-mode protocol (think to decide, not to re-derive):",
+	"1. Decide, record the decision (what, why, evidence) in the decision log, and act.",
+	"2. Reopen a decision only with new, citable evidence: a failing check, a tool output, or a contradiction found in the code. \"I feel unsure\" is not evidence.",
+	"3. Prefer running to reasoning: if a command or test can answer a question, run it.",
+	"4. Plan once in the plan file and update it by diff; do not restate the whole problem each turn.",
+	"5. If the same decision is reversed twice, stop and message the supervisor with both options and the evidence.",
+];
+
+export const STAFF_ENGINEER_CONTRACT = [
+	"Staff-engineer autonomy contract:",
+	"- Own the outcome end to end: understand → plan → list risks and unknowns → implement → test → self-critique → fix → prove → report.",
+	"- Decide reversible things and log them in the decision log. Escalate only for: irreversible or destructive actions, missing credentials or permissions, or genuine spec ambiguity where a wrong guess is costly AND the repo cannot resolve it.",
+	"- Test ladder, not smoke tests: unit; integration; edge cases and error paths; failure injection; a regression test for every bug found, shown failing before the fix and passing after; for key logic, a deliberate mutation showing the tests can fail. UI work adds shot, zoom, dom_metrics and baseline diff (incl. empty, loading and error states and responsive widths).",
+	"- Self-critique before claiming done: a written adversarial pass over edge cases, concurrency, security, performance, accessibility, backward compatibility and leftover TODO/debug code. Fix what you find; anything left unfixed is listed with the reason.",
+	"- Proof over words: write PROOF.md with the commands run, their outputs, screenshot/zoom paths and the check results. Claims without an artifact are ignored by the gate.",
+	"- Reversible by default: no force-push, no deleting data, no destructive commands outside this task's worktree.",
+];
+
+/** Decisive mode defaults ON for high thinking and above. */
+export function decisiveEnabled(level: string, explicit?: boolean): boolean {
+	if (explicit !== undefined) return explicit;
+	const order = ["off", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"];
+	return order.indexOf(level) >= order.indexOf("high");
+}
+
 export function composeAgentPrompt(input: {
 	goal: string;
 	agentName: string;
@@ -38,6 +64,7 @@ export function composeAgentPrompt(input: {
 	checks: { kind: string; config: Record<string, unknown> }[];
 	teammates: { name: string; owns: string[] }[];
 	thinkingLevel: string;
+	decisive?: boolean;
 }): string {
 	const lines: string[] = [];
 	lines.push(`Run goal (verbatim): ${input.goal}`);
@@ -64,6 +91,12 @@ export function composeAgentPrompt(input: {
 	);
 	lines.push("Required evidence in your `done` message: commands run and their results.");
 	lines.push("Forbidden: reverting others' work, touching unowned files, claiming completion without evidence.");
+	if (decisiveEnabled(input.thinkingLevel, input.decisive)) {
+		lines.push("");
+		lines.push(...DECISIVE_PROTOCOL);
+	}
+	lines.push("");
+	lines.push(...STAFF_ENGINEER_CONTRACT);
 	return lines.join("\n");
 }
 

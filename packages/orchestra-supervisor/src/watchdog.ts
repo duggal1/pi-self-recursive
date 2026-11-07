@@ -1,5 +1,7 @@
 // Completion gate + watchdog: evidence audit, then LLM review, then targeted re-prompt.
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Store } from "@earendil-works/pi-orchestra-core";
 import type { CheckOutcome } from "./goals.ts";
 
@@ -17,12 +19,28 @@ export interface AuditInput {
 	hasTestAfterEdit: boolean;
 	hasTypecheckAfterEdit: boolean;
 	hasScreenshotAfterEdit?: boolean;
+	/** Zoom evidence (shotd zoom on the changed selectors) for UI work. */
+	hasZoomAfterEdit?: boolean;
+	/** PROOF.md exists and is non-trivial (caller reports what the gate saw on disk). */
+	hasProof: boolean;
+	/** Decision-log reopenings without a cited evidence string. */
+	reversalsWithoutEvidence?: number;
 	isUI: boolean;
 	diffText: string;
 }
 
 export function evidenceAudit(input: AuditInput): Gap[] {
 	const gaps: Gap[] = [];
+	if (!input.hasProof)
+		gaps.push({
+			type: "no-proof",
+			detail: "PROOF.md missing or trivial: write PROOF.md with the commands run, their outputs, screenshot/zoom paths and check results",
+		});
+	if (input.reversalsWithoutEvidence && input.reversalsWithoutEvidence > 0)
+		gaps.push({
+			type: "unexplained-reversal",
+			detail: `${input.reversalsWithoutEvidence} decision reopening(s) without evidence: reopen only with new, citable evidence and record it`,
+		});
 	if (!input.hasTestAfterEdit)
 		gaps.push({
 			type: "no-test-after-edit",
@@ -37,6 +55,11 @@ export function evidenceAudit(input: AuditInput): Gap[] {
 		gaps.push({
 			type: "no-screenshot-after-edit",
 			detail: "for UI work, take a screenshot after the last edit and run baseline diff",
+		});
+	if (input.isUI && input.hasZoomAfterEdit === false)
+		gaps.push({
+			type: "no-zoom-after-edit",
+			detail: "for UI work, zoom (shotd zoom) the changed selectors after the last edit and attach the output",
 		});
 	for (const f of input.changedFiles) {
 		const owned = input.ownsGlobs.length === 0 || input.ownsGlobs.some((g) => f.startsWith(g.replace("/**", "")));
@@ -86,7 +109,16 @@ export async function completionGate(input: {
 	maxReprompts?: number;
 	round?: number;
 }): Promise<CompletionGateResult> {
-	const gaps = evidenceAudit(input.audit);
+	// F7: the gate reads PROOF.md and the decision log itself — caller reports don't count.
+	const proofPath = join(input.worktree, "PROOF.md");
+	const audit: AuditInput = {
+		...input.audit,
+		hasProof: existsSync(proofPath) && readFileSync(proofPath, "utf8").length > 200,
+		reversalsWithoutEvidence: input.store
+			.listDecisionLog(input.taskId)
+			.filter((e) => e.reopened && !e.evidence).length,
+	};
+	const gaps = evidenceAudit(audit);
 	if (gaps.length > 0) return { complete: false, gaps };
 	if (!input.checks.every((c) => c.passed)) {
 		const failed = input.checks

@@ -669,13 +669,77 @@ export class Store {
 		inputRef?: string | null;
 		decision: string;
 		rationale: string;
-		by: "reconciler" | "proxy" | "human";
+		by: "reconciler" | "proxy" | "human" | "goals";
 	}): string {
 		const id = ulid();
 		this.db
 			.prepare(`INSERT INTO decisions(id,ts,trigger,input_ref,decision,rationale,by) VALUES(?,?,?,?,?,?,?)`)
 			.run(id, Date.now(), input.trigger, input.inputRef ?? null, input.decision, input.rationale, input.by);
 		return id;
+	}
+
+	// --- F3 decision log (per task, persisted across restarts) ---
+	addDecisionLogEntry(input: {
+		taskId: string;
+		decision: string;
+		rationale: string;
+		evidence?: string;
+		reopened?: boolean;
+		by: "agent" | "supervisor" | "reconciler" | "goals";
+	}): string {
+		const id = ulid();
+		this.db
+			.prepare(
+				`INSERT INTO decision_log(id,task_id,ts,decision,rationale,evidence,reopened,by) VALUES(?,?,?,?,?,?,?,?)`,
+			)
+			.run(
+				id,
+				input.taskId,
+				Date.now(),
+				input.decision,
+				input.rationale,
+				input.evidence ?? "",
+				input.reopened ? 1 : 0,
+				input.by,
+			);
+		return id;
+	}
+
+	listDecisionLog(taskId: string): {
+		id: string;
+		ts: number;
+		decision: string;
+		rationale: string;
+		evidence: string;
+		reopened: boolean;
+		by: string;
+	}[] {
+		const rows = this.db
+			.prepare(`SELECT * FROM decision_log WHERE task_id=? ORDER BY ts`)
+			.all(taskId) as Record<string, unknown>[];
+		return rows.map((r) => ({
+			id: String(r.id),
+			ts: Number(r.ts),
+			decision: String(r.decision),
+			rationale: String(r.rationale),
+			evidence: String(r.evidence),
+			reopened: Number(r.reopened) === 1,
+			by: String(r.by),
+		}));
+	}
+
+	/** Render the task's log for re-injection on resume/retry; empty string when no entries. */
+	formatDecisionLog(taskId: string): string {
+		const entries = this.listDecisionLog(taskId);
+		if (entries.length === 0) return "";
+		return entries
+			.map(
+				(e) =>
+					`- ${new Date(e.ts).toISOString()} ${e.decision} — because ${e.rationale}` +
+					(e.evidence ? ` (evidence: ${e.evidence})` : "") +
+					(e.reopened ? " [REOPENED]" : ""),
+			)
+			.join("\n");
 	}
 	addEscalation(input: { id?: string; agentId?: string | null; reason: string }): string {
 		const id = input.id ?? ulid();

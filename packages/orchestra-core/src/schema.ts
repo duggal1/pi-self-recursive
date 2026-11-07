@@ -163,4 +163,20 @@ CREATE TABLE IF NOT EXISTS reprompts (
 CREATE INDEX IF NOT EXISTS idx_prompts_agent ON prompts(agent_id, version);
 `,
 	},
+	{
+		version: 3,
+		sql: `
+CREATE TABLE IF NOT EXISTS decision_log (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  ts INTEGER NOT NULL,
+  decision TEXT NOT NULL,
+  rationale TEXT NOT NULL DEFAULT '',
+  evidence TEXT NOT NULL DEFAULT '',
+  reopened INTEGER NOT NULL DEFAULT 0,
+  by TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_decision_log_task ON decision_log(task_id, ts);
+`,
+	},
 ];

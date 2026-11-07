@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import type { CheckRecord } from "@earendil-works/pi-orchestra-core";
 import { failureSignature, type Store } from "@earendil-works/pi-orchestra-core";
+import { raiseThinking, type ThinkingLevel } from "./thinking.ts";
 
 export interface CheckOutcome {
 	checkId: string;
@@ -200,6 +201,24 @@ export class GoalEngine {
 			}
 		}
 		this.store.setTaskState(taskId, "in_progress");
+		// F4: on a stalled retry, raise the owner's thinking one level before escalating.
+		// raiseThinking caps at ultra; the raise is logged so it is observable.
+		if (task.ownerAgentId) {
+			const agent = this.store.getAgent(task.ownerAgentId);
+			if (agent) {
+				const raised = raiseThinking(agent.thinkingLevel as ThinkingLevel);
+				if (raised !== agent.thinkingLevel) {
+					this.store.setThinkingLevel(agent.id, raised);
+					this.store.logDecision({
+						trigger: "thinking-raise",
+						inputRef: taskId,
+						decision: raised,
+						rationale: `stalled retry attempt ${task.attempts + 1}, ${agent.thinkingLevel} -> ${raised}`,
+						by: "goals",
+					});
+				}
+			}
+		}
 		return "retry";
 	}
 }

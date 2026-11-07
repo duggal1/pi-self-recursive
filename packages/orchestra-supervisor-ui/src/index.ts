@@ -77,6 +77,8 @@ export default function (pi: ExtensionAPI): void {
 			"fixed medium",
 			"fixed high",
 			"fixed extra high (xhigh)",
+			"fixed maximum (max)",
+			"fixed ultra (ultra)",
 			"dynamic",
 		]);
 		const naming = resolveAgentCount(preset, exact, 4); // planner refines exact count from capacity inside envelope.
