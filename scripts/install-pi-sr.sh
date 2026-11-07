@@ -49,11 +49,17 @@ else
 fi
 
 if [ ! -x "$BIN_DIR/pi-sr" ]; then
-  animate "building with Bun (first time)"
+  APP_DIR="${HOME}/.pi-sr-app"
+  animate "building with Node (first time)"
   git clone --depth 1 "https://github.com/${REPO}.git" "$TMP/src" >/dev/null 2>&1
-  ( cd "$TMP/src" && bun install --ignore-scripts >/dev/null 2>&1 && npm run build >/dev/null 2>&1 )
-  ( cd "$TMP/src/packages/coding-agent" && bun build --compile --no-compile-autoload-bunfig --no-compile-autoload-dotenv ./dist/bun/cli.js ./src/utils/image-resize-worker.ts ./src/extensions/codemode/worker.ts --outfile dist/pi-sr >/dev/null 2>&1 )
-  install -m 0755 "$TMP/src/packages/coding-agent/dist/pi-sr" "$BIN_DIR/pi-sr"
+  ( cd "$TMP/src" && npm ci --ignore-scripts >/dev/null 2>&1 && npm run build >/dev/null 2>&1 )
+  mkdir -p "$APP_DIR/bundle"
+  cp -R "$TMP/src/packages/coding-agent/dist/bundle" "$APP_DIR/"
+  cat > "$BIN_DIR/pi-sr" << EOF
+#!/usr/bin/env sh
+exec node "$APP_DIR/bundle/cli.js" "\$@"
+EOF
+  chmod +x "$BIN_DIR/pi-sr"
   stop_animate
   printf "✓ pi-sr built [███████████] 100%%\n"
 fi
