@@ -164,7 +164,7 @@ import {
 	formatAuthSelectorProviderType,
 	OAuthSelectorComponent,
 } from "./components/oauth-selector.ts";
-import { PI_LOGO_WIDTH, piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.ts";
+import { piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.ts";
 import { createLoginMenuSelector } from "./components/radius-login-selector.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
 import { SessionSelectorComponent } from "./components/session-selector.ts";
@@ -278,7 +278,7 @@ class BuiltInHeader extends ExpandableText {
 
 	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
 		const left = 1 + this.logoPadLeft;
-		if (event.type !== "click" || event.y > 3 || event.x < left || event.x > left + PI_LOGO_WIDTH - 1 || !this.onLogoClick)
+		if (event.type !== "click" || event.y > 1 || event.x < left || event.x > left + 7 || !this.onLogoClick)
 			return undefined;
 		this.onLogoClick(event.screenX - event.x + 1 + this.logoPadLeft, event.screenY - event.y);
 		return { handled: true };

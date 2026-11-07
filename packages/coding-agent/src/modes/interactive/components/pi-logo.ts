@@ -1,42 +1,34 @@
-import { foregroundAnsi, rgbColor } from "@earendil-works/pi-tui";
+import { backgroundAnsi, foregroundAnsi, isAppleTerminalSession, rgbColor } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 
 const PURPLE = rgbColor(99, 102, 241);
 const RESET = "\x1b[0m";
 
 /**
- * The pi logo: a full-block pixel glyph, 10 cells wide and 4 rows tall, so it
- * reads as chunky pixel art and renders identically on every terminal
- * (half-block art misaligns on some, e.g. Apple Terminal).
+ * The pi logo: 4 cells wide and 2 lines tall. Each cell shows two square pixels with half blocks:
  *
- *   ██████████
- *   ███    ███
- *   ██████████
- *   ███    ███
+ *   purple purple purple .
+ *   purple  .     purple .
+ *   purple  purple .     purple
+ *   purple  .     .     purple
  *
  * The brand color stays fixed across themes; it follows the terminal's color mode.
  */
-const PIXEL_ROWS = [0b1111111111, 0b1110000111, 0b1111111111, 0b1110000111];
-export const PI_LOGO_WIDTH = 10;
-
-export function piLogoLines(): string[] {
+export function piLogoLines(): [string, string] {
 	const mode = theme.getColorMode();
 	const fg = (color: typeof PURPLE) => foregroundAnsi(color, mode);
-	return PIXEL_ROWS.map((row) => {
-		let line = "";
-		for (let col = 0; col < PI_LOGO_WIDTH; col++) {
-			line += (row >> (PI_LOGO_WIDTH - 1 - col)) & 1 ? `${fg(PURPLE)}█${RESET}` : " ";
-		}
-		return line;
-	});
+	// The fourth cell of the top line is empty, so it is padded to the same width as the bottom line.
+	const top = `${fg(PURPLE)}${backgroundAnsi(PURPLE, mode)}▀▀${RESET}${fg(PURPLE)}▀▀██${RESET}  `;
+	const bottom = `${fg(PURPLE)}██▀▀${RESET}  ${fg(PURPLE)}██${RESET}`;
+	return [top, bottom];
 }
 
 /**
- * Whether the terminal renders the logo correctly. The glyph is full-block
- * only, so it renders identically everywhere.
+ * Whether the terminal renders the half-block logo correctly. Apple Terminal draws gaps between rows and
+ * misaligns the half blocks, so it gets the text wordmark instead.
  */
 export function supportsPiLogo(): boolean {
-	return true;
+	return !isAppleTerminalSession();
 }
 
 /** Text fallback for the logo: "Pi" in the brand purple. */
