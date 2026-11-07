@@ -66,7 +66,7 @@ Give it a goal and it will plan the work, assign the work, run the work, check t
 Install pi-sr (Bun, fastest):
 
 ```bash
-bun add -g github:duggal1/pi-self-recursive/packages/coding-agent
+curl -fsSL https://raw.githubusercontent.com/duggal1/pi-self-recursive/main/scripts/install-pi-sr.sh | bash
 pi-sr
 ```
 
