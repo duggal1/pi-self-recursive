@@ -1,0 +1,79 @@
+name: pi-sr (Bun)
+
+on:
+  push:
+    tags:
+      - 'pi-sr-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., pi-sr-v1.0.0)'
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts || npm install --ignore-scripts
+        env:
+          NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+      - run: npm run build
+      - name: Build pi-sr binary (Bun compile)
+        run: |
+          set -euo pipefail
+          cd packages/coding-agent
+          bun build --compile --no-compile-autoload-bunfig --no-compile-autoload-dotenv ./dist/bun/cli.js ./src/utils/image-resize-worker.ts ./src/extensions/codemode/worker.ts --outfile dist/pi-sr
+          chmod +x dist/pi-sr
+          ls -lh dist/pi-sr
+      - name: Package assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cd packages/coding-agent/dist
+          for p in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
+            echo "pi-sr binary (Bun compile, host-only here; CI matrix expands per platform)" > /dev/null
+          done
+          tar -czf "$GITHUB_WORKSPACE/release-assets/pi-sr-${{ env.RELEASE_TAG }}.tar.gz" pi-sr
+          cp pi-sr "$GITHUB_WORKSPACE/release-assets/pi-sr-${{ env.RELEASE_TAG }}"
+          cd "$GITHUB_WORKSPACE/release-assets"
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-sr-${{ env.RELEASE_TAG }}
+          path: release-assets/*
+          if-no-files-found: error
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pi-sr-${{ env.RELEASE_TAG }}
+          path: release-assets
+      - run: |
+          set -euo pipefail
+          cd release-assets
+          gh release create "${RELEASE_TAG}" --draft --title "${RELEASE_TAG}" --notes "pi-sr self-recursive version (Bun). Install: curl -fsSL https://github.com/duggal1/pi-self-recursive/releases/${RELEASE_TAG}/download/pi-sr-${RELEASE_TAG}.tar.gz | tar -xz -C ${HOME}/.bun/bin" ./* || gh release upload "${RELEASE_TAG}" ./* --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
