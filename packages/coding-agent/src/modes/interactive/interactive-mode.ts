@@ -164,7 +164,7 @@ import {
 	formatAuthSelectorProviderType,
 	OAuthSelectorComponent,
 } from "./components/oauth-selector.ts";
-import { piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.ts";
+import { PI_LOGO_WIDTH, piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.ts";
 import { createLoginMenuSelector } from "./components/radius-login-selector.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
 import { SessionSelectorComponent } from "./components/session-selector.ts";
@@ -265,11 +265,12 @@ class BuiltInHeader extends ExpandableText {
 	override render(width: number): string[] {
 		const lines = super.render(width);
 		// Center the pixel logo horizontally: pad from the top row's measured
-		// width, and carry the same pad to the second row, whose tail holds the
-		// hints (centering that line by its own width would shift the logo left).
+		// width, and carry the same pad down through the logo rows. Rows below
+		// the logo (hints and help lists) stay left-aligned.
+		const logoRows = piLogoLines().length;
 		const pad = lines.length > 0 ? Math.max(0, Math.floor((width - visibleWidth(lines[0]!)) / 2)) : 0;
 		this.logoPadLeft = pad;
-		for (let row = 0; row < 2 && row < lines.length; row++) {
+		for (let row = 0; row < logoRows && row < lines.length; row++) {
 			lines[row] = " ".repeat(pad) + lines[row]!;
 		}
 		return lines;
@@ -277,7 +278,7 @@ class BuiltInHeader extends ExpandableText {
 
 	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
 		const left = 1 + this.logoPadLeft;
-		if (event.type !== "click" || event.y > 1 || event.x < left || event.x > left + 7 || !this.onLogoClick)
+		if (event.type !== "click" || event.y > 3 || event.x < left || event.x > left + PI_LOGO_WIDTH - 1 || !this.onLogoClick)
 			return undefined;
 		this.onLogoClick(event.screenX - event.x + 1 + this.logoPadLeft, event.screenY - event.y);
 		return { handled: true };
@@ -1063,9 +1064,9 @@ export class InteractiveMode {
 			// "Pi vX" line instead, with the key hints below it.
 			const showLogo = supportsPiLogo();
 			const withLogo = (hints: string) => {
-				if (!showLogo) return `${piWordmark()} ${theme.fg("dim", `v${this.version}`)}\n${hints}`;
-				const [top, bottom] = piLogoLines();
-				return `${top} ${theme.fg("dim", `v${this.version}`)}\n${bottom} ${hints}`;
+				if (!showLogo) return `${piWordmark()}\n${hints}`;
+				// Centered pixel logo; hints on the next line, unchanged text.
+				return [...piLogoLines(), hints].join("\n");
 			};
 
 			// Build startup instructions using keybinding hint helpers
@@ -1109,10 +1110,9 @@ export class InteractiveMode {
 					"dim",
 					`Press ${keyText("app.tools.expand")} to show full startup help${showDetails ? " and loaded resources" : ""}.`,
 				);
-			const onboarding = () =>
-				theme.fg("dim", `Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.`);
+			const onboarding = () => theme.fg("muted", "Pie, get a new look. Self recursive.");
 			const header = new BuiltInHeader(
-				() => `${withLogo(compactInstructions())}\n${compactOnboarding()}\n\n${onboarding()}`,
+				() => `${withLogo(onboarding())}`,
 				() => `${withLogo(expandedInstructions())}\n\n${onboarding()}`,
 				this.getStartupExpansionState(),
 				1,

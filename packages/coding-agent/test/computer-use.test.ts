@@ -35,7 +35,7 @@ describe("screenshot tool", () => {
 				},
 			},
 		});
-		const result = await def.execute("id", { path: "shot.png" } as never);
+		const result = await def.execute("id", { path: "shot.png" } as never, undefined, undefined, {} as never);
 		expect(captured[0]).toBe(join(dir, "shot.png"));
 		expect(result.content[0]).toMatchObject({ type: "text" });
 	});
@@ -63,10 +63,10 @@ describe("apply_patch tool", () => {
 		const def = createApplyPatchToolDefinition(dir);
 		const ok = await def.execute("id", {
 			patch: ["--- a/a.txt", "+++ b/a.txt", "@@ -1,3 +1,3 @@", " a", "-b", "+B", " c"].join("\n"),
-		});
+		}, undefined, undefined, {} as never);
 		expect(ok.content[0]).toMatchObject({ type: "text" });
 		await expect(
-			def.execute("id", { patch: ["--- a/a.txt", "+++ b/a.txt", "@@ -1,1 +1,1 @@", " NOPE"].join("\n") }),
+			def.execute("id", { patch: ["--- a/a.txt", "+++ b/a.txt", "@@ -1,1 +1,1 @@", " NOPE"].join("\n") }, undefined, undefined, {} as never),
 		).rejects.toThrowError(/does not match/);
 	});
 });

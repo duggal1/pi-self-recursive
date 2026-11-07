@@ -64,14 +64,14 @@ describe("runFlipFlopCheck", () => {
 			});
 			const busy = { ...quiet, checkFlipsWithoutChange: 3 };
 
-			const first = await runFlipFlopCheck(store, t.id, busy, { steer: (text) => steered.push(text) });
+			const first = await runFlipFlopCheck(store, t.id, busy, { steer: (text) => { steered.push(text); } });
 			expect(first).toEqual({ fired: true, escalated: false });
 			expect(steered).toHaveLength(1);
 			expect(steered[0]).toContain("use budget tokens"); // quotes the decision log
 			expect(steered[0]).toContain("citable evidence");
 			expect(store.listReprompts(t.id)).toHaveLength(1);
 
-			const second = await runFlipFlopCheck(store, t.id, busy, { steer: (text) => steered.push(text) });
+			const second = await runFlipFlopCheck(store, t.id, busy, { steer: (text) => { steered.push(text); } });
 			expect(second).toEqual({ fired: true, escalated: true });
 			expect(store.listEscalations().some((e) => e.reason.includes("flip-flop"))).toBe(true);
 		} finally {
@@ -85,7 +85,7 @@ describe("runFlipFlopCheck", () => {
 		const steered: string[] = [];
 		try {
 			const t = store.createTask({ title: "t", spec: "s", ownsGlobs: [] });
-			const result = await runFlipFlopCheck(store, t.id, quiet, { steer: (text) => steered.push(text) });
+			const result = await runFlipFlopCheck(store, t.id, quiet, { steer: (text) => { steered.push(text); } });
 			expect(result).toEqual({ fired: false, escalated: false });
 			expect(steered).toHaveLength(0);
 			expect(store.listReprompts(t.id)).toHaveLength(0);

@@ -4,10 +4,7 @@ import { createHarnessServer } from "../src/harness-server.ts";
 describe("scenario harness (Plan A: OpenAI streaming)", () => {
 	it("streams a tool call over /v1/chat/completions", async () => {
 		const server = createHarnessServer({
-			steps: [
-				{ toolCalls: [{ name: "write", args: { path: "x.txt", content: "hi" } }] },
-				{ text: "done" },
-			],
+			steps: [{ toolCalls: [{ name: "write", args: { path: "x.txt", content: "hi" } }] }, { text: "done" }],
 		});
 		await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
 		try {

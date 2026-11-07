@@ -93,10 +93,19 @@ describe("F2 provider thinking params", () => {
 		});
 
 		it("clamps ultra to the highest mapped level, never invents one", async () => {
-			const model = completionsModel({
+			const model: Model<"openai-responses"> = {
+				id: "fixture-responses",
+				name: "Fixture Responses",
 				api: "openai-responses",
+				provider: "test",
+				baseUrl: "https://example.com/v1",
+				reasoning: true,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 128000,
+				maxTokens: 64000,
 				thinkingLevelMap: { minimal: "minimal", low: "low", medium: "medium", high: "high" },
-			}) as unknown as Model<"openai-responses">;
+			};
 			const payload = await payloadFor(streamResponses as never, model, "ultra");
 			expect(payload.reasoning).toMatchObject({ effort: "high" });
 		});

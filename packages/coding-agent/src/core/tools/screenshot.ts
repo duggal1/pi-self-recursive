@@ -17,7 +17,7 @@ import { type TypeBoxAgentTool, wrapToolDefinition } from "./tool-definition-wra
 
 const screenshotSchema = Type.Object({
 	path: Type.Optional(
-		Type.String({ description: "Where to write the PNG (relative or absolute). Default: temp directory." }),
+		Type.String({ description: "Where to write the WebP (relative or absolute). Default: temp directory." }),
 	),
 });
 
@@ -51,7 +51,7 @@ const defaultScreenshotOperations: ScreenshotOperations = {
 			void fsMkdir(dirname(absolutePath), { recursive: true }).catch(() => {
 				// screencapture reports its own error below.
 			});
-			const child = spawn("/usr/sbin/screencapture", ["-x", "-t", "png", absolutePath], {
+			const child = spawn("/usr/sbin/screencapture", ["-x", "-t", "webp", absolutePath], {
 				stdio: ["ignore", "pipe", "pipe"],
 			});
 			let stderr = "";
@@ -92,7 +92,7 @@ export function createScreenshotToolDefinition(
 		name: "screenshot",
 		label: "screenshot",
 		description:
-			"Capture a PNG screenshot of the current screen (macOS only) and save it to a path. Read the PNG with the read tool to view it. For mid-to-complex visual work only. Elite prompt: see docs/computer-use.md.",
+			"Capture a WebP screenshot of the current screen (macOS only) and save it to a path. Read it with the read tool to view it. For mid-to-complex visual work only. Elite prompt: see docs/computer-use.md.",
 		promptSnippet: screenshotToolSystemPromptContribution.snippet,
 		promptGuidelines: [...screenshotToolSystemPromptContribution.guidelines],
 		parameters: screenshotSchema,
@@ -109,7 +109,7 @@ export function createScreenshotToolDefinition(
 				absolutePath = resolveToCwd(path, ctx?.cwd || cwd);
 			} else {
 				const dir = await fsMkdtemp(join(tmpdir(), "pi-screenshot-"));
-				absolutePath = join(dir, "screenshot.png");
+				absolutePath = join(dir, "screenshot.webp");
 			}
 			await ops.capture(absolutePath, { signal });
 			// Surface the elite YAML prompt so a screenshot turn carries its own instructions.

@@ -2819,7 +2819,7 @@ export class AgentSession {
 		this.agent.state.thinkingLevel = effectiveLevel;
 
 		if (options.persist) {
-			this.settingsManager.setDefaultThinkingLevel(level);
+			this.settingsManager.setDefaultThinkingLevel(effectiveLevel);
 		}
 
 		if (isChanging) {
