@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pi-sr installer (Bun). Hyper-smooth download animation: braille spinner + eased progress.
+# pi-sr installer (Node). Hyper-smooth download animation: braille spinner + eased progress.
 set -euo pipefail
 
 REPO="duggal1/pi-self-recursive"

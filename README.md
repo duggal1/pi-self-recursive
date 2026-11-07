@@ -63,24 +63,11 @@ Give it a goal and it will plan the work, assign the work, run the work, check t
 
 ## Getting started
 
-Install pi-sr (Bun, fastest):
+Install pi-sr (Node, fastest reliable path):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/duggal1/pi-self-recursive/main/scripts/install-pi-sr.sh | bash
 pi-sr
-```
-
-Or download the prebuilt binary (smooth animated installer):
-
-```bash
-curl -fsSL https://github.com/duggal1/pi-self-recursive/releases/latest/download/pi-sr-darwin-arm64.tar.gz | tar -xz -C ~/.bun/bin
-pi-sr
-```
-
-Full installer with download animation:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/duggal1/pi-self-recursive/main/scripts/install-pi-sr.sh | bash
 ```
 
 pi-sr is the self-recursive version of Pi. It runs its own supervisor loop with automatic handoffs. It is separate from the official `pi` (own binary name, own config at `~/.pi-sr/`).

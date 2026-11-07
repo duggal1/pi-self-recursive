@@ -1,4 +1,4 @@
-name: pi-sr (Bun)
+name: pi-sr (Node)
 
 on:
   push:
@@ -24,9 +24,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,26 +31,19 @@ jobs:
         env:
           NPM_CONFIG_IGNORE_SCRIPTS: 'true'
       - run: npm run build
-      - name: Build pi-sr binary (Bun compile)
+      - name: Package pi-sr (Node bundle, reliable)
         run: |
           set -euo pipefail
-          cd packages/coding-agent
-          bun build --compile --no-compile-autoload-bunfig --no-compile-autoload-dotenv ./dist/bun/cli.js ./src/utils/image-resize-worker.ts ./src/extensions/codemode/worker.ts --outfile dist/pi-sr
-          chmod +x dist/pi-sr
-          ls -lh dist/pi-sr
-      - name: Package assets
-        run: |
-          set -euo pipefail
-          mkdir -p release-assets
-          cd packages/coding-agent/dist
-          for p in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
-            echo "pi-sr binary (Bun compile, host-only here; CI matrix expands per platform)" > /dev/null
-          done
-          tar -czf "$GITHUB_WORKSPACE/release-assets/pi-sr-${{ env.RELEASE_TAG }}.tar.gz" pi-sr
-          cp pi-sr "$GITHUB_WORKSPACE/release-assets/pi-sr-${{ env.RELEASE_TAG }}"
-          cd "$GITHUB_WORKSPACE/release-assets"
-          sha256sum * > SHA256SUMS
-          cat SHA256SUMS
+          mkdir -p release-assets/pi-sr
+          cp -R packages/coding-agent/dist/bundle release-assets/pi-sr/
+          cat > release-assets/pi-sr/pi-sr << 'EOS'
+          #!/usr/bin/env sh
+          exec node "$(dirname "$0")/bundle/cli.js" "$@"
+          EOS
+          chmod +x release-assets/pi-sr/pi-sr
+          cd release-assets
+          tar -czf "pi-sr-${{ env.RELEASE_TAG }}.tar.gz" pi-sr
+          cd ..
       - uses: actions/upload-artifact@v4
         with:
           name: pi-sr-${{ env.RELEASE_TAG }}
@@ -74,6 +64,6 @@ jobs:
       - run: |
           set -euo pipefail
           cd release-assets
-          gh release create "${RELEASE_TAG}" --draft --title "${RELEASE_TAG}" --notes "pi-sr self-recursive version (Bun). Install: curl -fsSL https://github.com/duggal1/pi-self-recursive/releases/${RELEASE_TAG}/download/pi-sr-${RELEASE_TAG}.tar.gz | tar -xz -C ${HOME}/.bun/bin" ./* || gh release upload "${RELEASE_TAG}" ./* --clobber
+          gh release create "${RELEASE_TAG}" --draft --title "${RELEASE_TAG}" --notes "pi-sr self-recursive version (Node bundle). Install: curl -fsSL https://github.com/duggal1/pi-self-recursive/releases/${RELEASE_TAG}/download/pi-sr-${RELEASE_TAG}.tar.gz -o /tmp/pi-sr.tgz && tar -xz -C ~/.pi-sr-app -f /tmp/pi-sr.tgz --strip-components=1" ./* || gh release upload "${RELEASE_TAG}" ./* --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
