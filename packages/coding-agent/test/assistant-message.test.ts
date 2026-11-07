@@ -348,4 +348,32 @@ describe("AssistantMessageComponent", () => {
 		const unpaddedLines = unpaddedComponent.render(40).map((line) => stripAnsi(line));
 		expect(unpaddedLines.some((line) => line.startsWith("hello"))).toBe(true);
 	});
+
+	test("shows the thinking placeholder while streaming an empty thinking run, and the trace once deltas arrive", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(undefined, false, undefined, "Thinking...", 1, []);
+		const message = createAssistantMessage([{ type: "thinking", thinking: "" }], { stopReason: "pending" });
+
+		component.updateContent(message, true);
+		expect(stripAnsi(component.render(80).join("\n"))).toContain("Thinking...");
+
+		component.updateContent(
+			createAssistantMessage([{ type: "thinking", thinking: "Still thinking through the tool order." }], {
+				stopReason: "pending",
+			}),
+			true,
+		);
+		const streamed = stripAnsi(component.render(80).join("\n"));
+		expect(streamed).toContain("Still thinking through the tool order.");
+		expect(streamed).not.toContain("Thinking...");
+	});
+
+	test("renders no placeholder for a completed empty thinking run", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(undefined, false, undefined, "Thinking...", 1, []);
+		component.updateContent(createAssistantMessage([{ type: "thinking", thinking: "" }]), false);
+		expect(stripAnsi(component.render(80).join("\n"))).not.toContain("Thinking...");
+	});
 });

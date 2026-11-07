@@ -63,6 +63,7 @@ import { processImage } from "../utils/image-process.ts";
 import { sleep } from "../utils/sleep.ts";
 import { normalizeToolResultImages } from "../utils/tool-result-images.ts";
 import { formatNoApiKeyFoundMessage, formatNoModelSelectedMessage } from "./auth-guidance.ts";
+import { AUTOPILOT_MAX_CONSECUTIVE_NUDGES, AUTOPILOT_NUDGE_TEXT, shouldAutopilotContinue } from "./autopilot.ts";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.ts";
 import { generateBugReportSummary } from "./bug-report.ts";
 import type { CacheWarmer, CacheWarmingStatus } from "./cache-warmer.ts";
@@ -515,6 +516,11 @@ export class AgentSession {
 	/** Prompt options after before_agent_start mutations for the active run. */
 	private _runSystemPromptOptions?: NormalizedBuildSystemPromptOptions;
 
+	/** Autopilot: consecutive stalled-announcement nudges this run, reset by any productive turn. */
+	private _autopilotNudgeCount = 0;
+	/** Autopilot: a nudge was decided in finishTurn and must ride the next turn's messages. */
+	private _autopilotNudgePending = false;
+
 	constructor(config: AgentSessionConfig) {
 		this.agent = config.agent;
 		this.sessionManager = config.sessionManager;
@@ -950,10 +956,39 @@ export class AgentSession {
 			this._boundaryDispatchedMessages.add(turn.message);
 			const extensionContinue = await this._dispatchTurnEndBoundary(turn.message, turn.toolResults);
 			const previousDecision = await previousFinishTurn?.(turn, signal);
-			if (previousDecision?.action === "end") return previousDecision;
-			if (extensionContinue || previousDecision?.action === "continue") return { action: "continue" };
+			if (previousDecision?.action === "end") {
+				this._autopilotNudgePending = false;
+				return previousDecision;
+			}
+			if (extensionContinue || previousDecision?.action === "continue") {
+				this._autopilotNudgePending = false;
+				return { action: "continue" };
+			}
+			// A turn that ran tools is productive: it resets the consecutive
+			// stalled-announcement count.
+			if (turn.toolResults.length > 0) this._autopilotNudgeCount = 0;
+			// Autopilot: the model ended its turn with an announcement and no
+			// tool calls, so nothing it described happened. Continue once with a
+			// nudge instead of returning to the prompt; prepareNextTurn delivers it.
+			if (
+				this.settingsManager.getAutopilot() &&
+				this._autopilotNudgeCount < AUTOPILOT_MAX_CONSECUTIVE_NUDGES &&
+				shouldAutopilotContinue(turn.message, turn.toolResults)
+			) {
+				this._autopilotNudgeCount += 1;
+				this._autopilotNudgePending = true;
+				return { action: "continue" };
+			}
+			this._autopilotNudgePending = false;
 			return undefined;
 		};
+	}
+
+	/** Take the autopilot nudge decided in finishTurn, if any, as the next user message. */
+	private _takeAutopilotNudge(): UserMessage | undefined {
+		if (!this._autopilotNudgePending) return undefined;
+		this._autopilotNudgePending = false;
+		return { role: "user", content: [{ type: "text", text: AUTOPILOT_NUDGE_TEXT }], timestamp: Date.now() };
 	}
 
 	private _installAgentNextTurnRefresh(): void {
@@ -976,6 +1011,7 @@ export class AgentSession {
 			const updateMessage = this._preparePromptAndToolLoadout(options, nextContext.messages);
 			// Keep session.systemPrompt and ctx.getSystemPrompt() in step with what the provider sees.
 			this._runSystemPromptOptions = options;
+			const nudge = this._takeAutopilotNudge();
 
 			return {
 				...previousSnapshot,
@@ -983,9 +1019,11 @@ export class AgentSession {
 					...nextContext,
 					tools: this.agent.state.tools.slice(),
 				},
-				messages: updateMessage
-					? [...(previousSnapshot?.messages ?? []), updateMessage]
-					: previousSnapshot?.messages,
+				messages: [
+					...(previousSnapshot?.messages ?? []),
+					...(updateMessage ? [updateMessage] : []),
+					...(nudge ? [nudge] : []),
+				],
 				model: this.agent.state.model,
 				thinkingLevel: this.agent.state.thinkingLevel,
 			};
@@ -1943,6 +1981,8 @@ export class AgentSession {
 	private async _startRun(trigger: BeforeAgentStartTrigger, onStarted?: () => void): Promise<void> {
 		this._isAgentRunActive = true;
 		this._agentRunAbortRequested = false;
+		this._autopilotNudgeCount = 0;
+		this._autopilotNudgePending = false;
 		let messages: AgentMessage[];
 		try {
 			messages = await this._prepareRun(trigger);

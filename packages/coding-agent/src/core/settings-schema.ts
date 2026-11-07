@@ -254,6 +254,12 @@ export const SettingsSchema = Type.Object(
 				default: SETTINGS_DEFAULTS.showCacheMissNotices,
 			}),
 		),
+		autopilot: Type.Optional(
+			Type.Boolean({
+				description: "Keep the agent working past turn-ending announcements instead of stopping for the user.",
+				default: SETTINGS_DEFAULTS.autopilot,
+			}),
+		),
 		externalEditor: Type.Optional(
 			Type.String({ description: "Command for Ctrl+G external editor; takes precedence over VISUAL and EDITOR." }),
 		),

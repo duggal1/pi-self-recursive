@@ -243,4 +243,20 @@ describe("buildSystemPrompt", () => {
 			expect(build([])).toContain("Use the read tool to load a skill's file");
 		});
 	});
+
+	describe("autonomy", () => {
+		test("tells the model to act without asking and never to end on an announcement", () => {
+			const prompt = buildSystemPrompt({
+				selectedTools: ["read", "bash"],
+				contextFiles: [],
+				skills: [],
+				cwd: process.cwd(),
+			});
+
+			expect(prompt).toContain("Act autonomously until the task is fully complete");
+			expect(prompt).toContain("Never stop to ask for permission");
+			expect(prompt).toContain("Never end your turn with only a plan or announcement");
+			expect(prompt).toContain("do it with tool calls in the same turn");
+		});
+	});
 });

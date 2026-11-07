@@ -26,6 +26,7 @@ export const SETTINGS_DEFAULTS = {
 	},
 	hideThinkingBlock: false,
 	showCacheMissNotices: false,
+	autopilot: true,
 	quietStartup: false,
 	defaultProjectTrust: "ask",
 	collapseChangelog: false,

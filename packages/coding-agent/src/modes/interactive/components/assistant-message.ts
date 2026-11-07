@@ -181,6 +181,16 @@ export class AssistantMessageComponent extends Container {
 				i--;
 
 				if (thinkingBlocks.length === 0) {
+					// Live liveness while the model thinks: reasoning often buffers
+					// its summary until the reasoning item completes, so an empty
+					// run mid-stream means "still thinking", not "nothing happened".
+					// Show the placeholder until the first delta arrives.
+					if (this.isStreaming && this.hiddenThinkingLabel.trim()) {
+						addVisibleChild(
+							new Text(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0),
+						);
+						needsSpacer = true;
+					}
 					continue;
 				}
 

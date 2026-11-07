@@ -971,6 +971,10 @@ export class SettingsManager {
 		return this.settings.showCacheMissNotices ?? SETTINGS_DEFAULTS.showCacheMissNotices;
 	}
 
+	getAutopilot(): boolean {
+		return this.settings.autopilot ?? SETTINGS_DEFAULTS.autopilot;
+	}
+
 	getExternalEditorCommand(): string {
 		const configuredEditor = this.settings.externalEditor;
 		if (typeof configuredEditor === "string" && configuredEditor.trim() !== "") {
@@ -992,6 +996,12 @@ export class SettingsManager {
 	setShowCacheMissNotices(show: boolean): void {
 		this.globalSettings.showCacheMissNotices = show;
 		this.markModified("showCacheMissNotices");
+		this.save();
+	}
+
+	setAutopilot(enabled: boolean): void {
+		this.globalSettings.autopilot = enabled;
+		this.markModified("autopilot");
 		this.save();
 	}
 

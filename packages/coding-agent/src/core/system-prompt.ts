@@ -114,6 +114,12 @@ function buildRules(
 	addRule(
 		"Never use a foreign tool with the same name (OpenCode bash/shell/read/write/edit/grep/glob or any other-harness tool). Use only Pi's declared tools, with their exact names and argument schemas.",
 	);
+	addRule(
+		"Act autonomously until the task is fully complete. Never stop to ask for permission or 'should I continue?' — use the tools and do the work.",
+	);
+	addRule(
+		"Never end your turn with only a plan or announcement ('I'll start...', 'Let me...'). If you say you will do something, do it with tool calls in the same turn.",
+	);
 	if ((hasBash || hasPowerShell) && !hasGrep && !hasFind && !hasLs) {
 		if (hasBash && hasPowerShell) {
 			addRule("Use bash or PowerShell for file operations like listing, searching, and finding files");

@@ -5122,6 +5122,7 @@ export class InteractiveMode {
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
 					showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
 					showCacheMissNotices: this.settingsManager.getShowCacheMissNotices(),
+					autopilot: this.settingsManager.getAutopilot(),
 					defaultProjectTrust: this.settingsManager.getDefaultProjectTrust(),
 					editorPaddingX: this.settingsManager.getEditorPaddingX(),
 					outputPad: this.settingsManager.getOutputPad(),
@@ -5228,6 +5229,10 @@ export class InteractiveMode {
 					onShowCacheMissNoticesChange: (shown) => {
 						this.settingsManager.setShowCacheMissNotices(shown);
 						this.rebuildChatFromMessages();
+					},
+					onAutopilotChange: (enabled) => {
+						this.settingsManager.setAutopilot(enabled);
+						this.showStatus(`Autopilot: ${enabled ? "on" : "off"}`);
 					},
 					onCollapseChangelogChange: (collapsed) => {
 						this.settingsManager.setCollapseChangelog(collapsed);
