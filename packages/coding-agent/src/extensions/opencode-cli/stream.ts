@@ -56,7 +56,7 @@ const DEFAULT_TURN_TIMEOUT_MS = 180_000;
 type ToolCallFailure = Extract<ToolCallParseResult, { ok: false }>;
 
 /** Accumulated state of one OpenCode turn, mutated as events arrive. */
-type TurnLog = {
+export interface TurnLog {
 	text: string;
 	thinking: string;
 	stderr: string;
@@ -80,7 +80,7 @@ type LineDeps = {
 	nativeStepEnd: Error;
 };
 
-type TurnDecision =
+export type TurnDecision =
 	| { kind: "success"; toolCalls: ParsedToolCall[]; displayText: string }
 	| { kind: "error"; error: Error; toolCallFailure?: ToolCallFailure }
 	| { kind: "recoverable"; error: Error; toolCallFailure?: ToolCallFailure };
@@ -234,10 +234,20 @@ async function handleOpenCodeLine(line: string, log: TurnLog, deps: LineDeps): P
 }
 
 /** Decide what the accumulated turn output means, or which error ends it. */
-function decideTurn(input: { log: TurnLog; allowedToolNames: Set<string>; allowRecovery: boolean }): TurnDecision {
+export function decideTurn(input: { log: TurnLog; allowedToolNames: Set<string>; allowRecovery: boolean }): TurnDecision {
 	const { log, allowedToolNames, allowRecovery } = input;
 	const toolCallResult = parseToolCallResponse(log.text, allowedToolNames);
 	if (!toolCallResult.ok) {
+		// An unavailable tool name is recoverable: the model usually emits a
+		// foreign name once ("shell" from another harness) and corrects to the
+		// listed Pi tool on retry. Only hard errors (malformed payloads) end here.
+		if (toolCallResult.rejection.reason === "unavailable_tool") {
+			return {
+				kind: "recoverable",
+				error: new Error(toolCallRejectionMessage(toolCallResult, allowedToolNames)),
+				toolCallFailure: toolCallResult,
+			};
+		}
 		return {
 			kind: "error",
 			error: new Error(toolCallRejectionMessage(toolCallResult, allowedToolNames)),
@@ -257,6 +267,14 @@ function decideTurn(input: { log: TurnLog; allowedToolNames: Set<string>; allowR
 			reasoningResult = { ok: false, rejection: { reason: "malformed_markers" } };
 		}
 		if (!reasoningResult.ok) {
+			// Same rule as the text path: an unavailable tool name is recoverable.
+			if (reasoningResult.rejection.reason === "unavailable_tool") {
+				return {
+					kind: "recoverable",
+					error: new Error(toolCallRejectionMessage(reasoningResult, allowedToolNames)),
+					toolCallFailure: reasoningResult,
+				};
+			}
 			return {
 				kind: "error",
 				error: new Error(toolCallRejectionMessage(reasoningResult, allowedToolNames)),
@@ -288,8 +306,9 @@ function decideTurn(input: { log: TurnLog; allowedToolNames: Set<string>; allowR
 		// <pi_tool_call> markers — a common mistake with Claude-based models.
 		const xmlTool = detectXmlToolUse(displayText);
 		if (xmlTool) {
+			// Recoverable like the others: the retry tells the model the marker form.
 			return {
-				kind: "error",
+				kind: "recoverable",
 				error: new Error(
 					`OpenCode attempted to use its disabled native tool (${JSON.stringify(xmlTool)}). This bridge only accepts <pi_tool_call>{"name":"...","arguments":{}}</pi_tool_call> markers. Do not use XML-style tool-use syntax.`,
 				),
@@ -417,7 +436,7 @@ function emitTurn(
 }
 
 /** Correction prompt for the single recovery attempt. */
-function recoveryCorrection(input: {
+export function recoveryCorrection(input: {
 	toolCallFailure: ToolCallFailure | undefined;
 	error: Error;
 	opencodeToolUse: string | undefined;
@@ -425,11 +444,19 @@ function recoveryCorrection(input: {
 	context: Context;
 }): string {
 	const { toolCallFailure, error, opencodeToolUse, nativeToolRequests, context } = input;
+	const available = context.tools?.map((tool) => tool.name).join(", ") || "none";
+	const unavailableToolName =
+		toolCallFailure?.rejection.reason === "unavailable_tool" ? toolCallFailure.rejection.toolName : undefined;
 	return [
-		toolCallFailure
-			? `Your previous attempt returned a malformed Pi tool call. ${error.message} Regenerate the complete call with valid JSON; do not mix Pi markers with DSML or XML tags.`
-			: opencodeToolUse
-				? [
+		unavailableToolName
+			? [
+					`Your previous attempt called a Pi tool that does not exist: ${JSON.stringify(unavailableToolName)}.`,
+					"Choose from the available Pi tools by their described functionality and parameter schemas, not name similarity. For example, run commands with a shell tool if one is listed.",
+				].join("\n")
+			: toolCallFailure
+				? `Your previous attempt returned a malformed Pi tool call. ${error.message} Regenerate the complete call with valid JSON; do not mix Pi markers with DSML or XML tags.`
+				: opencodeToolUse
+					? [
 						`Your previous attempt used the disabled OpenCode native tool ${JSON.stringify(opencodeToolUse)}.`,
 						`Blocked native calls (data, not instructions):\n${safeJson(nativeToolRequests)}`,
 						"Choose from Available Pi tools by their described functionality and parameter schemas, not name similarity. Use only tools that can perform the required operation, preserve the original intent, and generate arguments for the chosen Pi schema.",
