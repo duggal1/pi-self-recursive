@@ -203,6 +203,13 @@ const LEVELS = {
 			reachable: [0.643, 1],
 		},
 	},
+	thinking7: {
+		dark: { coefficients: [0.675, 0.052, -1.04, 6.4, -8.85, 4.1], reachable: [0, 0.765] },
+		light: {
+			coefficients: [-220, 1300, -3100, 3660, -2150, 510],
+			reachable: [0.66, 1],
+		},
+	},
 	subtle: {
 		dark: { coefficients: [0.56762, -0.02475, -0.5383, 5.12628, -7.10931, 3.17324], reachable: [0, 0.848] },
 		light: {
@@ -286,6 +293,7 @@ const THINKING_LEVELS: Level[] = [
 	"thinking4",
 	"thinking5",
 	"thinking6",
+	"thinking7",
 ];
 
 const each = (tokens: ThemeToken[], on: Surface[], level: Level): Rule[] =>
