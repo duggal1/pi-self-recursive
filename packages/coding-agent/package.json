@@ -3,13 +3,8 @@
 	"version": "1.5.0",
 	"description": "Coding agent CLI with read, bash, edit, write tools and session management",
 	"type": "module",
-	"piConfig": {
-		"name": "pi-sr",
-		"configDir": ".pi-sr"
-	},
 	"bin": {
-		"pi": "dist/bundle/cli.js",
-		"pi-sr": "dist/bundle/cli.js"
+		"pi": "dist/bundle/cli.js"
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
