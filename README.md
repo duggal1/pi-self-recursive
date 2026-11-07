@@ -63,22 +63,14 @@ Give it a goal and it will plan the work, assign the work, run the work, check t
 
 ## Getting started
 
-Build pi (single binary, latest code):
+Install pi-sr (Node, fastest reliable path):
 
 ```bash
-git clone https://github.com/duggal1/pi-self-recursive
-cd pi-self-recursive
-npm run build
-mkdir -p ~/.bun/bin
-cat > ~/.bun/bin/pi << 'EOS'
-#!/usr/bin/env sh
-exec node "$HOME/workspace/pi-self-recursive/packages/coding-agent/dist/bundle/cli.js" "$@"
-EOS
-chmod +x ~/.bun/bin/pi
-pi
+curl -fsSL https://raw.githubusercontent.com/duggal1/pi-self-recursive/main/scripts/install-pi-sr.sh | bash
+pi-sr
 ```
 
-`pi` is the only binary. If you previously installed `pi-sr`, remove it (`rm ~/.bun/bin/pi-sr ~/.pi-sr-app` — your `~/.pi-sr` config and history are untouched) so an old install cannot shadow the current code.
+pi-sr is the self-recursive version of Pi. It runs its own supervisor loop with automatic handoffs. It is separate from the official `pi` (own binary name, own config at `~/.pi-sr/`).
 
 Start Pi in the directory where you want it to work:
 
