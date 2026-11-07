@@ -257,13 +257,29 @@ class ExpandableText extends ThemedText implements Expandable {
 	}
 }
 
-/** The built-in header. Clicking its logo (the first two lines, after one column of padding) plays an easter egg. */
+/** The built-in header. Clicking its logo (the first two lines) plays an easter egg. The logo is centered. */
 class BuiltInHeader extends ExpandableText {
 	onLogoClick: ((column: number, row: number) => void) | undefined;
+	private logoPadLeft = 0;
+
+	override render(width: number): string[] {
+		const lines = super.render(width);
+		// Center the pixel logo horizontally: pad from the top row's measured
+		// width, and carry the same pad to the second row, whose tail holds the
+		// hints (centering that line by its own width would shift the logo left).
+		const pad = lines.length > 0 ? Math.max(0, Math.floor((width - visibleWidth(lines[0]!)) / 2)) : 0;
+		this.logoPadLeft = pad;
+		for (let row = 0; row < 2 && row < lines.length; row++) {
+			lines[row] = " ".repeat(pad) + lines[row]!;
+		}
+		return lines;
+	}
 
 	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
-		if (event.type !== "click" || event.y > 1 || event.x < 1 || event.x > 4 || !this.onLogoClick) return undefined;
-		this.onLogoClick(event.screenX - event.x + 1, event.screenY - event.y);
+		const left = 1 + this.logoPadLeft;
+		if (event.type !== "click" || event.y > 1 || event.x < left || event.x > left + 7 || !this.onLogoClick)
+			return undefined;
+		this.onLogoClick(event.screenX - event.x + 1 + this.logoPadLeft, event.screenY - event.y);
 		return { handled: true };
 	}
 }

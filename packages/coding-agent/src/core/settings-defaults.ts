@@ -26,8 +26,11 @@ export const SETTINGS_DEFAULTS = {
 	},
 	hideThinkingBlock: false,
 	showCacheMissNotices: false,
-	autopilot: true,
 	quietStartup: false,
+	// Autopilot continuation is opt-in: the heuristic nudge misfires on
+	// conversational turns ("how can I help?"), while the system prompt's
+	// autonomy rules carry the real fix. Users can enable it in Settings.
+	autopilot: false,
 	defaultProjectTrust: "ask",
 	collapseChangelog: false,
 	enableInstallTelemetry: true,

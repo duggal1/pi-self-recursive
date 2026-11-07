@@ -14,7 +14,7 @@
 - `pi.registerMarkdownTransformer()` takes an optional `{ messageTypes }` that selects the Markdown surfaces a transformer runs on. Besides user, assistant, and thinking Markdown, transformers can now opt into `custom` (custom messages and skill blocks), `summary` (branch and compaction summaries), and `changelog` (What's New, `/changelog`, the Extension Updates notice, and the Update Available note). Without options a transformer runs on user, assistant, and thinking Markdown as before. The built-in Mermaid renderer now also draws diagrams in expanded branch and compaction summaries
 - `pi auth login <provider>` logs in to a provider from the shell without starting a session, for example `pi auth login radius`. It signs in with an account in the browser and exits; `--api-key` saves an API key instead, and `--no-browser` uses device code or copy-code sign-in instead. Logging in to Radius also configures the Radius MCP server. `pi auth logout <provider>` removes the stored credentials, like `/logout`
 - `ctx.ui.custom()` overlays now honor the `blocked` option: pi reports blocked program status (OSC 7501) from when the overlay is shown until it calls `done()`, also while it is hidden with `setHidden()`. Closing one overlay keeps other open questions blocked ([#11816](https://github.com/earendil-works/pi/issues/11816))
-- `autopilot` setting (on by default, toggle in Settings): a turn that ends with only an announcement such as "I'll start..." and no tool calls is automatically continued with a nudge user message, up to 3 consecutive times, instead of returning to the prompt. A turn that runs tools resets the count
+- `autopilot` setting (opt-in, toggle in Settings): a turn that ends with only an announcement such as "I'll start..." and no tool calls is automatically continued with a nudge user message, up to 3 consecutive times, instead of returning to the prompt. A turn that runs tools resets the count
 
 ### Changed
 
@@ -23,6 +23,7 @@
 - Consecutive cache warms now show as one `Cache warmed: $<total>` line with the cumulative cost instead of one line per warm
 - The OpenAI Codex provider is shown as "OpenAI Codex" again instead of "OpenAI Codex (legacy)" in `/login` and the model selector
 - The default system prompt now instructs the model to act autonomously until the task is fully complete: never stop to ask for permission, and never end a turn with only a plan or announcement; an announced next step is executed with tool calls in the same turn
+- The startup header's pixel logo is centered across the terminal, with the easter-egg click zone following it
 
 ### Fixed
 

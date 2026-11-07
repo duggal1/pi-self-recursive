@@ -39,11 +39,22 @@ describe("shouldAutopilotContinue", () => {
 			"I'll continue investigating the startup header, thinking-level default bug, theme handling, screenshot format, and supervisor references to implement the minimal UI changes.",
 			"Let me check the settings configuration and fix the thinking level.",
 			"Shall I edit the files now?",
-			"Would you like me to refactor this module?",
 			"Now I'll run the tests.",
 			"First, I'll hide the startup context.",
 		])("nudges: %s", (text) => {
 			expect(shouldAutopilotContinue(assistantMessage(text), [])).toBe(true);
+		});
+	});
+
+	describe("conversational turns never nudge", () => {
+		test.each([
+			"Hey there. I'm Crouton Alpha — how can I help?",
+			"Let me help you with that.",
+			"Shall we chat about it?",
+			"Would you like me to refactor this module?",
+			"I'm happy to help. What would you like to do?",
+		])("does not nudge: %s", (text) => {
+			expect(shouldAutopilotContinue(assistantMessage(text), [])).toBe(false);
 		});
 	});
 

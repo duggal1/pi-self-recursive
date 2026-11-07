@@ -21,12 +21,13 @@ export const AUTOPILOT_NUDGE_TEXT =
 	"Continue the work without stopping to announce it. Do not ask for permission: execute the next step with tool calls now, and keep going until the task is fully complete.";
 
 /**
- * Text that announces action or asks for permission instead of doing the
- * work. Kept deliberately narrow: the modal "I'll"/"Let me"/"Shall I" forms
- * that precede a tool call, not general first-person prose.
+ * Text that announces action instead of doing the work. Kept to action
+ * announcements: opening phrases that begin an execution ("I'll start…",
+ * "Let me build…"), not conversational scaffolding ("how can I help?",
+ * "shall we chat?"), which must never trigger the nudge.
  */
 const INTENT_RE =
-	/\b(?:i'll|i will|i am going to|i'm going to|i'd start|i'd begin|let me|let's|let us|now i(?:'ll| will|\s)|next,?\s*i(?:'ll| will|\s)|first,?\s*i(?:'ll| will|\s)|then i(?:'ll| will|\s)|starting (?:with|by)|beginning (?:with|by)|shall i|should i|may i|can i|would you like me to|do you want me to|is it ok(?:ay)? (?:to|if)|ok to)\b/i;
+	/\b(?:i'll (?:start|begin|continue|go|do|take|make|check|inspect|explore|fix|edit|run|implement|create|write|update|test|verify|hide|add|remove|delete|open|show|change)|i will (?:start|begin|continue|do|take|make|check|inspect|explore|fix|edit|run|implement|create|write|update|test|verify|hide|add|remove|delete|open|show|change)|let me (?:start|begin|continue|check|inspect|explore|fix|edit|run|implement|create|write|update|test|verify|hide|add|remove|delete|open|show|change|see)|now i'll|next i'll|first i'll|starting (?:with|by)|beginning (?:with|by)|shall i (?:start|begin|continue|go|do|edit|fix|run|check|hide|add|remove|delete|open|show|change)|should i (?:start|begin|continue|go|do|edit|fix|run|check|hide|add|remove|delete|open|show|change))\b/i;
 
 /**
  * Strong completion signals: the turn reports finished work or hands control

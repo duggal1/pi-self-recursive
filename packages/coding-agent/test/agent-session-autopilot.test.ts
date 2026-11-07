@@ -77,7 +77,8 @@ describe("AgentSession autopilot", () => {
 		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
 		const modelRegistry = await createModelRegistry(authStorage, tempDir);
 		await authStorage.modify("anthropic", async () => ({ type: "api_key", key: "test-key" }));
-		if (options?.autopilot === false) settingsManager.applyOverrides({ autopilot: false });
+		// Autopilot is opt-in now: these tests exercise the nudge path explicitly.
+		settingsManager.applyOverrides({ autopilot: options?.autopilot ?? true });
 
 		session = new AgentSession({
 			agent,
@@ -126,6 +127,15 @@ describe("AgentSession autopilot", () => {
 			replies: ["I'll start by exploring the repo structure.", "Success."],
 			autopilot: false,
 		});
+
+		await created.session.prompt("Ship it");
+
+		expect(created.getCallCount()).toBe(1);
+	});
+
+	it("does not continue with default settings (autopilot is opt-in)", async () => {
+		const created = await createSession({ replies: ["I'll start by exploring the repo structure.", "Success."] });
+		created.session.settingsManager.setAutopilot(false);
 
 		await created.session.prompt("Ship it");
 
